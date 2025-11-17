@@ -12,10 +12,10 @@ Model name is converted to lowercase for the collection name:
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 
-# Example schemas (replace with your own):
-
+# Core users/products kept for compatibility
 class User(BaseModel):
     """
     Users collection schema
@@ -23,9 +23,10 @@ class User(BaseModel):
     """
     name: str = Field(..., description="Full name")
     email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
+    address: Optional[str] = Field(None, description="Address")
     age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
     is_active: bool = Field(True, description="Whether user is active")
+    is_seller: bool = Field(False, description="Whether the user can host shows")
 
 class Product(BaseModel):
     """
@@ -38,11 +39,45 @@ class Product(BaseModel):
     category: str = Field(..., description="Product category")
     in_stock: bool = Field(True, description="Whether product is in stock")
 
-# Add your own schemas here:
-# --------------------------------------------------
+# Live Shopping (Whatnot-style) Schemas
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+class Show(BaseModel):
+    """Live show hosted by a seller"""
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    status: str = Field("scheduled", description="scheduled|live|ended")
+    start_time: Optional[datetime] = None
+    host_id: Optional[str] = Field(None, description="User id of the host")
+    cover_image: Optional[str] = None
+
+class Item(BaseModel):
+    """Item to be auctioned in a show"""
+    show_id: str
+    title: str
+    description: Optional[str] = None
+    start_price: float = Field(..., ge=0)
+    image_url: Optional[str] = None
+    status: str = Field("ready", description="draft|ready|sold")
+
+class Auction(BaseModel):
+    show_id: str
+    item_id: str
+    status: str = Field("not_started", description="not_started|live|ended")
+    starting_price: float = Field(..., ge=0)
+    current_price: float = Field(..., ge=0)
+    ends_at: Optional[datetime] = None
+    highest_bid_id: Optional[str] = None
+
+class Bid(BaseModel):
+    show_id: str
+    item_id: str
+    auction_id: str
+    user_id: str
+    amount: float = Field(..., gt=0)
+
+class Message(BaseModel):
+    show_id: str
+    user_id: Optional[str] = None
+    text: str
+    type: str = Field("text", description="text|system")
